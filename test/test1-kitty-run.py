@@ -2,7 +2,6 @@ import subprocess
 
 
 def run(argv: list[str]) -> int:
-    # Ejecuta kitty y devuelve el exit code
     proc = subprocess.run(argv)
     return proc.returncode
 

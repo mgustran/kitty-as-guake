@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Kitty as Guake
+Comment=Kitty wrapper in guake style
+Exec=/home/mgustran/00-development/kitty-wrapper/system_dist/kitty-guake
+Icon=/home/mgustran/00-development/kitty-wrapper/images_gui/kitty.png
+Terminal=false
+Categories=Utility;

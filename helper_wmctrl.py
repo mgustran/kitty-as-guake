@@ -20,12 +20,16 @@ class WmCtrlHelper:
 
         for line in res.splitlines():
             if class_name in line:
-                return line.split()[0]  # primer "campo" (como awk '{print $1}')
+                return line.split()[0]
         return None
 
     def set_window_initial_config(self, win_id: str) -> None:
         subprocess.run(["wmctrl", "-ir", win_id, "-b", "add,skip_taskbar"])
         subprocess.run(["wmctrl", "-ir", win_id, "-b", "add,above"])
+
+        monitor_list = self.get_monitors()
+        monitor_idx = self.find_window_monitor(win_id, monitor_list)
+        self.resize_window(win_id, -1, -1, monitor_list[monitor_idx][2], -1)
 
     def minimize_window(self, win_id: str) -> None:
         subprocess.run(["xdotool", "windowminimize", win_id])
@@ -52,8 +56,8 @@ class WmCtrlHelper:
         # res = run_command(["xprop", "-root", "_NET_ACTIVE_WINDOW"])
         res = run_command(["xprop", "-root", "_NET_ACTIVE_WINDOW"])
         res_id = re.search(r'0x[0-9a-fA-F]+', res).group(0)
-        print(res)
-        print(win_id)
+        # print(res)
+        # print(win_id)
         # return win_id in res
         return self.normalize(win_id) == self.normalize(res_id.strip())
 
@@ -71,7 +75,7 @@ class WmCtrlHelper:
             x, y, w, h = int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])
             rows.append((win_id, x, y, w, h))
 
-        print(rows)
+        # print(rows)
 
         if len(rows) > 1:
             print("ERROR: Multiple windows found")
@@ -96,6 +100,11 @@ class WmCtrlHelper:
     #     print(rows)
     #
     #     return rows
+
+    # def find_panel_by_monitor(self, monitor_idx):
+    #     panels = self.get_panels_geometry()
+    #     panels.sort(key=lambda p: (p[1]))
+    #     return panels[monitor_idx]
 
     def get_monitors(self) -> list[tuple[int, int, int, int]]:
         """
@@ -127,8 +136,3 @@ class WmCtrlHelper:
                 return i  # monitor idx
 
         return None
-
-    def find_panel_by_monitor(self, monitor_idx):
-        panels = self.get_panels_geometry()
-        panels.sort(key=lambda p: (p[1]))
-        return panels[monitor_idx]
