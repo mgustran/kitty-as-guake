@@ -1,0 +1,6 @@
+.venv
+.idea
+build
+dist
+system_dist
+*.spec
