@@ -1,5 +1,5 @@
 # kitty-as-guake
-### (Kitty “Guake-style” drop-down terminal)
+### (Kitty "Guake-style" drop-down terminal)
 
 ![](https://i.postimg.cc/CKY0XGxh/kitty-guake-v1.gif)
 
