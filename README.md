@@ -10,7 +10,7 @@ A small **Linux** wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/ki
 - Toggle **show/hide** (focus vs minimize) via a **global hotkey**.
 - **Move between multiple monitors** and **resize** the window with hotkeys.
 - Includes a **GTK3 systray icon** with a simple menu (open / quit).
-- Many of the features available on guake can be configured 
+- Many of the features available on guake can be configured through native kitty config. 
 
 > Warn: This is a very basic and **very** early-stage project, made specifically to work in xfce/x11 and at the moment only will be tested on Debian13+xfce4.
 > Probably there are other projects than can perform better or to be better written (maybe harder to configure too).
