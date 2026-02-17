@@ -58,3 +58,6 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
 - I am a guake long-time user and want to have a custom-maintained and minimal terminal.
 - Uncomplicated to configure across all my computers
 - The main and real reason for all of this is that is wanted to see the album covers from [spotify-player](https://github.com/aome510/spotify-player) and guake does not support that
+
+### License
+This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
