@@ -1,160 +1,133 @@
-import os
 import subprocess
-import sys
 import time
+from typing import Optional, List
 
 from helper_config import KgConfig
 from helper_hotkeys import GlobalHotKeys
 from helper_wmctrl import WmCtrlHelper
 
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        # from pyinstaller binary
-        return os.path.dirname(sys.executable)
-    else:
-        # from normal script execution
-        return os.path.dirname(os.path.abspath(__file__))
-
 class KittyManager:
 
     def __init__(self, kg_config: KgConfig):
-        self.proc = None
-        self.wm_id = None
+        self.proc: Optional[subprocess.Popen] = None
+        self.wm_id: Optional[str] = None
         self.hotkeys = GlobalHotKeys(long_press_threshold=0.5, repeat_interval=0.02)
         self.wmctrl = WmCtrlHelper()
         self.kg_config = kg_config
 
         self.start_terminal(minimized=True)
 
-    def start_terminal(self, minimized=False):
-        # base_path = get_base_path()
-        # print("base path : " + base_path)
-        # if not Path(base_path + "/kitty.conf").exists():
-        #     print("kitty.conf not found")
-        #     return
-        initial_monitor = int(self.kg_config.config["general"]["initial_monitor"])
+    def start_terminal(self, minimized: bool = False) -> None:
+        try:
+            initial_monitor = int(self.kg_config.config["general"].get("initial_monitor", 0))
+        except (ValueError, KeyError):
+            initial_monitor = 0
+
         monitor_list = self.wmctrl.get_monitors()
-        position_x = monitor_list[initial_monitor][0]
+        if initial_monitor >= len(monitor_list):
+            initial_monitor = 0
+            
+        position_x = monitor_list[initial_monitor][0] if monitor_list else 0
+        
         print(f"Starting kitty in monitor {initial_monitor} at position {position_x}")
-        print(monitor_list[initial_monitor])
-        cmd = ["kitty", "-c", self.kg_config.get_config_path() + "/generated.conf",
-                             "-o", "allow_remote_control=socket-only",
-                             "--listen-on", "unix:/tmp/mykitty",
-                             # "--start-as", "minimized",
-                             # "--single-instance",
-                             "--position", str(position_x) + "x0",
-                             "--app-id", "kitty-wrapped",
-                             "--directory", "~"
-                             ]
+        
+        cmd = [
+            "kitty", 
+            "-c", str(self.kg_config.KITTY_GEN_CONF),
+            "-o", "allow_remote_control=socket-only",
+            "--listen-on", "unix:/tmp/mykitty",
+            "--position", f"{position_x}x0",
+            "--app-id", "kitty-wrapped",
+            "--directory", "~"
+        ]
+        
         if minimized:
-            cmd.append("--start-as")
-            cmd.append("minimized")
+            cmd.extend(["--start-as", "minimized"])
+            
         self.run_background(cmd)
         print("Kitty started")
 
-    def run_background(self, argv: list[str]):
+    def run_background(self, argv: List[str]) -> None:
         self.proc = subprocess.Popen(argv)
 
         timeout = 10  # seconds
         start = time.time()
         self.wm_id = None
+        
         while time.time() - start < timeout:
             self.wm_id = self.wmctrl.get_window_id("kitty-wrapped.kitty-wrapped")
             if self.wm_id:
                 break
-            time.sleep(0.1)
-
-        print(time.time() - start, "seconds to detect kitty window")
+            time.sleep(0.2)
 
         if not self.wm_id:
-            raise RuntimeError("cannot find kitty window")
+            print("Warning: cannot find kitty window within timeout")
+            return
 
+        print(f"{time.time() - start:.2f} seconds to detect kitty window")
         self.wmctrl.set_window_initial_config(self.wm_id)
 
     def on_activate_resize_up(self) -> None:
-        # print("Captured: Resize Up")
-
-        if self.wmctrl.is_window_focused(self.wm_id):
-            window = self.wmctrl.get_window_geometry(self.wm_id)
-            self.wmctrl.resize_window(self.wm_id, -1, -1, -1, window[4] - 18)
+        if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
+            geom = self.wmctrl.get_window_geometry(self.wm_id)
+            if geom:
+                self.wmctrl.resize_window(self.wm_id, -1, -1, -1, geom[4] - 18)
 
     def on_activate_resize_down(self) -> None:
-        # print("Captured: Resize Down")
-
-        if self.wmctrl.is_window_focused(self.wm_id):
-            window = self.wmctrl.get_window_geometry(self.wm_id)
-            self.wmctrl.resize_window(self.wm_id, -1, -1, -1, window[4] + 18)
+        if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
+            geom = self.wmctrl.get_window_geometry(self.wm_id)
+            if geom:
+                self.wmctrl.resize_window(self.wm_id, -1, -1, -1, geom[4] + 18)
 
     def on_activate_move_left(self) -> None:
-        # print("Captured: Move Left")
-
-        if self.wmctrl.is_window_focused(self.wm_id):
+        if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
             monitor_list = self.wmctrl.get_monitors()
             monitor_idx = self.wmctrl.find_window_monitor(self.wm_id, monitor_list)
-            print(monitor_idx)
-            if monitor_idx > 0:
+            if monitor_idx is not None and monitor_idx > 0:
                 monitor_target = monitor_list[monitor_idx - 1]
                 self.wmctrl.resize_window(self.wm_id, monitor_target[0], 0, monitor_target[2], -1)
 
     def on_activate_move_right(self) -> None:
-        # print("Captured: Move Right")
-
-        if self.wmctrl.is_window_focused(self.wm_id):
+        if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
             monitor_list = self.wmctrl.get_monitors()
             monitor_idx = self.wmctrl.find_window_monitor(self.wm_id, monitor_list)
-            print(monitor_idx)
-            if monitor_idx <= len(monitor_list) - 2:
+            if monitor_idx is not None and monitor_idx < len(monitor_list) - 1:
                 monitor_target = monitor_list[monitor_idx + 1]
                 self.wmctrl.resize_window(self.wm_id, monitor_target[0], 0, monitor_target[2], -1)
 
-
     def on_activate_visibility_toggle(self) -> None:
-        # print("Captured: Visibility Toggle")
-
         if self.proc is None or self.proc.poll() is not None:
             self.start_terminal()
+            return
 
-        else:
-            visible = self.wmctrl.get_window_state(self.wm_id)
-            if visible is None:
-                print("ERROR: PROCESS RUNNING BUT CANNOT GET STATE")
-            if visible:
-                if not self.wmctrl.is_window_focused(self.wm_id):
-                    # print("Focusing window")
-                    self.wmctrl.maximize_window(self.wm_id)
-                else:
-                    # print("Minimizing window")
-                    self.wmctrl.minimize_window(self.wm_id)
-            else:
-                # print("Maximizing window")
+        if not self.wm_id:
+            self.wm_id = self.wmctrl.get_window_id("kitty-wrapped.kitty-wrapped")
+            if not self.wm_id:
+                return
+
+        visible = self.wmctrl.get_window_state(self.wm_id)
+        if visible:
+            if not self.wmctrl.is_window_focused(self.wm_id):
                 self.wmctrl.maximize_window(self.wm_id)
-
+            else:
+                self.wmctrl.minimize_window(self.wm_id)
+        else:
+            self.wmctrl.maximize_window(self.wm_id)
 
     def run(self) -> None:
-        # HOTKEY_RESIZE_UP =    "<ctrl>+<shift>+<up>"
-        # HOTKEY_RESIZE_DOWN =  "<ctrl>+<shift>+<down>"
-        # HOTKEY_RESIZE_LEFT =  "<ctrl>+<shift>+<left>"
-        # HOTKEY_RESIZE_RIGHT = "<ctrl>+<shift>+<right>"
-        # HOTKEY_VISIBILITY_TOGGLE = "<ctrl>+ñ"
-
-        hotkey_resize_up = self.kg_config.config["hotkeys"]["hotkey_resize_up"].replace("\"", "")
-        hotkey_resize_down = self.kg_config.config["hotkeys"]["hotkey_resize_down"].replace("\"", "")
-        hotkey_move_left = self.kg_config.config["hotkeys"]["hotkey_move_left"].replace("\"", "")
-        hotkey_move_right = self.kg_config.config["hotkeys"]["hotkey_move_right"].replace("\"", "")
-        hotkey_visibility_toggle = self.kg_config.config["hotkeys"]["hotkey_visibility_toggle"].replace("\"", "")
+        hotkeys_cfg = self.kg_config.config.get("hotkeys", {})
+        
+        def get_hk(name):
+            return hotkeys_cfg.get(name, "").replace("\"", "")
 
         keys = {
-            hotkey_resize_up: self.on_activate_resize_up,
-            hotkey_resize_down: self.on_activate_resize_down,
-            hotkey_move_left: self.on_activate_move_left,
-            hotkey_move_right: self.on_activate_move_right,
-            hotkey_visibility_toggle: self.on_activate_visibility_toggle
+            get_hk("hotkey_resize_up"): self.on_activate_resize_up,
+            get_hk("hotkey_resize_down"): self.on_activate_resize_down,
+            get_hk("hotkey_move_left"): self.on_activate_move_left,
+            get_hk("hotkey_move_right"): self.on_activate_move_right,
+            get_hk("hotkey_visibility_toggle"): self.on_activate_visibility_toggle
         }
 
-        # self.start_terminal()
-        # self.hotkeys.run(keys)
-        # print(keys)
+        # Filter out empty hotkeys
+        keys = {k: v for k, v in keys.items() if k}
         self.hotkeys.start(keys)
-
-# 0x0960000b
-# 0x960000b

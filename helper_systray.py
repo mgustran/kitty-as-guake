@@ -2,35 +2,45 @@ import os
 import platform
 import sys
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import gi
+
+from helper_file import FileHelper
+
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, GdkPixbuf
 
 if TYPE_CHECKING:
     from helper_kitty import KittyManager
 
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
+# def get_resource_path(relative_path: str) -> str:
+#     # Get absolute path to resource, works for dev and for PyInstaller
+#     if getattr(sys, 'frozen', False):
+#         base_path = sys._MEIPASS
+#     else:
+#         # Assuming we are in helper_systray.py and images are in project root
+#         base_path = os.path.dirname(os.path.abspath(__file__))
+#
+#     path = os.path.join(base_path, relative_path)
+#     # If not found (maybe when running from different directory in dev), try project root
+#     if not os.path.exists(path):
+#          base_path = os.path.abspath(".")
+#          path = os.path.join(base_path, relative_path)
+#     return path
 
 class KittySystray:
     def __init__(self, manager: "KittyManager"):
         self.manager = manager
-        self.icon = None
-        self._loop: GLib.MainLoop | None = None
-        self._thread: threading.Thread | None = None
+        self.icon: Optional[Gtk.StatusIcon] = None
+        self._loop: Optional[GLib.MainLoop] = None
+        self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
 
     def start_systray_in_thread(self) -> None:
         with self._lock:
             if self._thread and self._thread.is_alive():
-                return  # prevent run more than once
+                return
 
             self._thread = threading.Thread(
                 target=self.run_systray_loop,
@@ -40,84 +50,71 @@ class KittySystray:
             self._thread.start()
 
     def is_running(self) -> bool:
-        t = self._thread
-        return bool(t and t.is_alive())
+        return bool(self._thread and self._thread.is_alive())
 
     def stop(self) -> None:
-        loop = self._loop
-        if loop is not None:
-            GLib.idle_add(loop.quit)
+        if self._loop:
+            GLib.idle_add(self._loop.quit)
 
     def run_systray_loop(self) -> None:
-        self.create_systray()
+        GLib.idle_add(self.create_systray)
         self._loop = GLib.MainLoop()
         self._loop.run()
 
-    def create_systray(self):
-        if platform.system() == "Linux":
-            unique_id = f"com.mgustran.kitty.{os.getpid()}"
-            GLib.set_prgname(unique_id)
-            GLib.set_application_name('Kitty Manager')
-
-            self.icon = Gtk.StatusIcon()
-            icon_path = resource_path("images_gui/kitty.png")
-
-            try:
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file(icon_path)
-                self.icon.set_from_pixbuf(pixbuf)
-            except Exception as e:
-                print(f"Error cargando icono: {e}")
-                self.icon.set_from_icon_name("applications-system")
-
-            self.icon.set_tooltip_text("Kitty Manager")
-            self.icon.connect("popup-menu", self.on_right_click)
-            self.icon.connect("activate", self.on_left_click)
-            self.icon.set_visible(True)
-
+    def create_systray(self) -> None:
+        if platform.system() != "Linux":
             return
 
-    def on_left_click(self, icon):
-        self.toggle_window()
-        print("Left click")
+        unique_id = f"com.mgustran.kitty.{os.getpid()}"
+        GLib.set_prgname(unique_id)
+        GLib.set_application_name('Kitty Manager')
 
-    def on_right_click(self, icon, button, time):
-        # Handle right click - show context menu
-        print("Right click")
+        self.icon = Gtk.StatusIcon()
+        icon_path = str(FileHelper.get_resource_path("images_gui/kitty.png"))
+
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(icon_path)
+            self.icon.set_from_pixbuf(pixbuf)
+        except Exception as e:
+            print(f"Error loading icon {icon_path}: {e}")
+            self.icon.set_from_icon_name("utilities-terminal")
+
+        self.icon.set_tooltip_text("Kitty Manager")
+        self.icon.connect("popup-menu", self.on_right_click)
+        self.icon.connect("activate", self.on_left_click)
+        self.icon.set_visible(True)
+
+    def on_left_click(self, icon: Gtk.StatusIcon) -> None:
+        print("Left click: Toggle window")
+        self.manager.on_activate_visibility_toggle()
+
+    def on_right_click(self, icon: Gtk.StatusIcon, button: int, activate_time: int) -> None:
         menu = Gtk.Menu()
 
-        item_open = Gtk.MenuItem(label="Open Kitty")
-        item_open.connect("activate", self.show_window)
+        item_open = Gtk.MenuItem(label="Open/Focus Kitty")
+        item_open.connect("activate", self._on_menu_open)
         menu.append(item_open)
 
-        # Separator
         menu.append(Gtk.SeparatorMenuItem())
 
         item_quit = Gtk.MenuItem(label="Quit")
-        item_quit.connect("activate", self.quit_window)
+        item_quit.connect("activate", self._on_menu_quit)
         menu.append(item_quit)
 
         menu.show_all()
-        menu.popup(None, None, None, None, button, time)
+        menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, activate_time)
 
-    def toggle_window(self, *args):
-        print("Toggle window visibility")
-        self.manager.on_activate_visibility_toggle()
-        pass
+    def _on_menu_open(self, widget: Gtk.MenuItem) -> None:
+        if self.manager.wm_id:
+            self.manager.wmctrl.maximize_window(self.manager.wm_id)
+        else:
+            self.manager.start_terminal()
 
-    def show_window(self, *args):
-        print("Show window")
-        self.manager.wmctrl.maximize_window(self.manager.wm_id)
-        pass
-
-    def quit_window(self, *args):
-        print("Quit window")
-
-        try:
-            if self.manager.proc is not None and self.manager.proc.poll() is None:
-                self.manager.proc.terminate()
-        except Exception as e:
-            print("Error cerrando kitty:", e)
-
+    def _on_menu_quit(self, widget: Gtk.MenuItem) -> None:
+        print("Quitting application...")
+        if self.manager.proc and self.manager.proc.poll() is None:
+            self.manager.proc.terminate()
+        
         self.manager.hotkeys.stop()
-
         self.stop()
+        sys.exit(0)
