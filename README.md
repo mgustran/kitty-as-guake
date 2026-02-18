@@ -13,8 +13,7 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
 - Many of the features available on guake can be configured through native kitty config. 
 
 > Warn: This is a very basic and **very** early-stage project, made specifically to work in xfce/x11 and at the moment only will be tested on Debian13+xfce4.
-> Can contain bugs and security issues. Probably there are other projects than can perform better or to be better written (maybe harder to configure too).
-
+> Can contain bugs and security issues.
 ---
 
 ### Requirements
@@ -57,10 +56,13 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
   - **NOTE**: the command is a kitten command, not bash or anything else. Kitten reference: https://sw.kovidgoyal.net/kitty/remote-control/#remote-control-via-a-socket
 
 ### Why?
-- I wanted a simple and stable way to launch a kitty terminal in a drop-down style and maintain some features from guake as more window control.
-- I am a guake long-time user and want to have a custom-maintained and minimal terminal.
-- Uncomplicated to configure across all my computers
+- I am a guake long-time user and wanted to migrate to kitty without losing the features that I like in guake
+- Wanted to have an uncomplicated to configure but fancy terminal across all my computers
 - The main and real reason for all of this is that is wanted to see the album covers from [spotify-player](https://github.com/aome510/spotify-player) and guake does not support that
+
+### Third-party code / Attributions
+
+- `templates/tab_bar.py` — adapted from [@cdelledonne's tab_bar.py](https://github.com/cdelledonne/dotfiles/blob/master/kitty/tab_bar.py)
 
 ### License
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
