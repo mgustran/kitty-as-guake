@@ -29,6 +29,7 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
   - Option 1: Download prebuilt binaries from the releases page.
   - Option 2: Build it yourself
 - (optional, but recommended): Set binaries inside a PATH folder
+- Note: kgcli.sh (bash script) can be renamed to kgcli and added to PATH instead of the binary version
 
 ### Build
 - Clone the repo
@@ -47,9 +48,11 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
   - **DONT** modify the `generated.conf` file, as will be overrided on every start
 
 #### Remote control
-- Run `kgcli ` to control the kitty-guake wrapper remotely. (this is useful to integrate wrapper into the system)
-  - example: `./kgcli --show true --cmd "launch --type=tab ~"` will open a new tab in ~ inside the running kitty instance
-  - `--show true` will show the window if minimized 
+- kgcli comes in two "flavours": **pyinstaller binary** and **bash script**: `./kgcli` or `./kgcli.sh` 
+> At the moment the bash version is faster and probably will be the default from now on. 
+- Run `kgcli` to control the kitty-guake wrapper remotely. (this is useful to integrate wrapper into the system)
+  - example: `./kgcli --show --cmd "launch --type=tab ~"` will open a new tab in ~ inside the running kitty instance
+  - `--show` will show the window if minimized 
   - `--cmd <command>` will run the command on the kitty instance
   - **NOTE**: the command is a kitten command, not bash or anything else. Kitten reference: https://sw.kovidgoyal.net/kitty/remote-control/#remote-control-via-a-socket
 
