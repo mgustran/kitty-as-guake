@@ -2,9 +2,8 @@
 ### (Kitty "Guake-style" drop-down terminal)
 
 
-<a href="https://res.cloudinary.com/custom-cv/video/upload/v1771525214/kitty-wrapper-1_urfhhk.mp4">
-  <img src="https://i.postimg.cc/XYXjTxy0/kitty-wrapper-1.gif" width="100%">
-</a>
+[![kitty-wrapper](https://i.postimg.cc/XYXjTxy0/kitty-wrapper-1.gif)](https://res.cloudinary.com/custom-cv/video/upload/v1771525214/kitty-wrapper-1_urfhhk.mp4)
+
 
 A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** for **Linux** to make it behave like a **Guake / drop-down terminal**:
 
