@@ -1,7 +1,10 @@
 # kitty-as-guake
 ### (Kitty "Guake-style" drop-down terminal)
 
-![](https://i.postimg.cc/CKY0XGxh/kitty-guake-v1.gif)
+
+<a href="https://res.cloudinary.com/custom-cv/video/upload/v1771525214/kitty-wrapper-1_urfhhk.mp4">
+  <img src="https://i.postimg.cc/XYXjTxy0/kitty-wrapper-1.gif" width="100%">
+</a>
 
 A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** for **Linux** to make it behave like a **Guake / drop-down terminal**:
 
@@ -58,7 +61,7 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
 ### Why?
 - I am a guake long-time user and wanted to migrate to kitty without losing the features that I like in guake
 - Wanted to have an uncomplicated to configure but fancy terminal across all my computers
-- The main and real reason for all of this is that is wanted to see the album covers from [spotify-player](https://github.com/aome510/spotify-player) and guake does not support that
+- The main and real reason for all of this is that I wanted to see the album covers from [spotify-player](https://github.com/aome510/spotify-player) and guake does not support that
 
 ### Third-party code / Attributions
 
@@ -66,3 +69,4 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
 
 ### License
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
+
