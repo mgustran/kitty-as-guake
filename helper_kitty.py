@@ -67,17 +67,29 @@ class KittyManager:
         print(f"{time.time() - start:.2f} seconds to detect kitty window")
         self.wmctrl.set_window_initial_config(self.wm_id)
 
+    def _kitty_redraw(self) -> None:
+        subprocess.run(
+            ["kitty", "@", "--to", "unix:/tmp/mykitty", "resize-os-window", "--action=resize", "--width=0", "--height=0"],
+            capture_output=True
+        )
+        # subprocess.run(
+        #     ["kitty", "@", "--to", "unix:/tmp/mykitty", "set-background-opacity", "--all", "default"],
+        #     capture_output=True
+        # )
+
     def on_activate_resize_up(self) -> None:
         if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
             geom = self.wmctrl.get_window_geometry(self.wm_id)
             if geom:
                 self.wmctrl.resize_window(self.wm_id, -1, -1, -1, geom[4] - 18)
+                self._kitty_redraw()
 
     def on_activate_resize_down(self) -> None:
         if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
             geom = self.wmctrl.get_window_geometry(self.wm_id)
             if geom:
                 self.wmctrl.resize_window(self.wm_id, -1, -1, -1, geom[4] + 18)
+                self._kitty_redraw()
 
     def on_activate_move_left(self) -> None:
         if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):

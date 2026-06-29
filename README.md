@@ -2,8 +2,13 @@
 ### (Kitty "Guake-style" drop-down terminal)
 
 
-[![kitty-wrapper](https://i.postimg.cc/XYXjTxy0/kitty-wrapper-1.gif)](https://res.cloudinary.com/custom-cv/video/upload/v1771525214/kitty-wrapper-1_urfhhk.mp4)
+[![kitty-wrapper](https://i.postimg.cc/CKY0XGxh/kitty-guake-v1.gif)](https://res.cloudinary.com/custom-cv/video/upload/v1771525214/kitty-wrapper-1_urfhhk.mp4)
 
+<details>
+  <summary>Click to expand video</summary>
+
+  https://github.com/user-attachments/assets/489f856e-e43c-4c65-bb0e-3e22a9e85441
+</details>
 
 A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** for **Linux** to make it behave like a **Guake / drop-down terminal**:
 
@@ -69,3 +74,8 @@ A small wrapper around **[Kitty terminal](https://sw.kovidgoyal.net/kitty/)** fo
 ### License
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
 
+<details>
+  <summary>Click to expand video</summary>
+
+  https://github.com/user-attachments/assets/489f856e-e43c-4c65-bb0e-3e22a9e85441
+</details>

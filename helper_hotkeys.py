@@ -59,6 +59,23 @@ class GlobalHotKeys:
                     if combo not in self._threads or not self._threads[combo][0].is_alive():
                         self._start_repeat_thread(combo, callback)
 
+            # # Buscar combos que coincidan
+            # matching_combos = [
+            #     combo for combo in self._active_combos
+            #     if combo.issubset(self._pressed_keys)
+            # ]
+            #
+            # if not matching_combos:
+            #     return
+            #
+            # # Elegir el combo más específico (más teclas)
+            # best_combo = max(matching_combos, key=len)
+            # callback = self._active_combos[best_combo]
+            #
+            # # Solo iniciar si no existe o murió
+            # if best_combo not in self._threads or not self._threads[best_combo][0].is_alive():
+            #     self._start_repeat_thread(best_combo, callback)
+
     def on_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         with self._lock:
             self._pressed_keys.discard(key)
