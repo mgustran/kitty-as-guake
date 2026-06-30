@@ -26,34 +26,34 @@ class KittyManager:
         monitor_list = self.wmctrl.get_monitors()
         if initial_monitor >= len(monitor_list):
             initial_monitor = 0
-            
-        position_x = monitor_list[initial_monitor][0] if monitor_list else 0
-        
+
+        monitor = monitor_list[initial_monitor] if monitor_list else (0, 0, -1, -1)
+        position_x, position_y, monitor_width, _monitor_height = monitor
+
         print(f"Starting kitty in monitor {initial_monitor} at position {position_x}")
-        
+
         cmd = [
-            "kitty", 
+            "kitty",
             "-c", str(self.kg_config.KITTY_GEN_CONF),
             "-o", "allow_remote_control=socket-only",
             "--listen-on", "unix:/tmp/mykitty",
-            "--position", f"{position_x}x0",
             "--app-id", "kitty-wrapped",
             "--directory", "~"
         ]
-        
+
         if minimized:
             cmd.extend(["--start-as", "minimized"])
-            
-        self.run_background(cmd)
+
+        self.run_background(cmd, position_x, position_y, monitor_width)
         print("Kitty started")
 
-    def run_background(self, argv: List[str]) -> None:
+    def run_background(self, argv: List[str], x: int = 0, y: int = 0, width: int = -1) -> None:
         self.proc = subprocess.Popen(argv)
 
         timeout = 10  # seconds
         start = time.time()
         self.wm_id = None
-        
+
         while time.time() - start < timeout:
             self.wm_id = self.wmctrl.get_window_id("kitty-wrapped.kitty-wrapped")
             if self.wm_id:
@@ -65,7 +65,7 @@ class KittyManager:
             return
 
         print(f"{time.time() - start:.2f} seconds to detect kitty window")
-        self.wmctrl.set_window_initial_config(self.wm_id)
+        self.wmctrl.set_window_initial_config(self.wm_id, x, y, width)
 
     def _kitty_redraw(self) -> None:
         subprocess.run(

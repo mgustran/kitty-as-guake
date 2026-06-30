@@ -29,14 +29,12 @@ class WmCtrlHelper:
                 return line.split()[0]
         return None
 
-    def set_window_initial_config(self, win_id: str) -> None:
+    def set_window_initial_config(self, win_id: str, x: int = 0, y: int = 0, width: int = -1) -> None:
         run_command(["wmctrl", "-ir", win_id, "-b", "add,skip_taskbar"])
         run_command(["wmctrl", "-ir", win_id, "-b", "add,above"])
 
-        monitor_list = self.get_monitors()
-        monitor_idx = self.find_window_monitor(win_id, monitor_list)
-        if monitor_idx is not None:
-            self.resize_window(win_id, -1, -1, monitor_list[monitor_idx][2], -1)
+        if width > 0:
+            self.resize_window(win_id, x, y, width, -1)
 
     def minimize_window(self, win_id: str) -> None:
         run_command(["xdotool", "windowminimize", win_id])

@@ -54,10 +54,14 @@ class KittySystray:
 
     def stop(self) -> None:
         if self._loop:
-            GLib.idle_add(self._loop.quit)
+            GLib.idle_add(
+                lambda _data: self._loop.quit() or False,
+                None,
+                GLib.PRIORITY_DEFAULT,
+            )
 
     def run_systray_loop(self) -> None:
-        GLib.idle_add(self.create_systray)
+        self.create_systray()
         self._loop = GLib.MainLoop()
         self._loop.run()
 
