@@ -1,3 +1,4 @@
+import os
 import subprocess
 import time
 from typing import Optional, List
@@ -22,6 +23,10 @@ class KittyManager:
             initial_monitor = int(self.kg_config.config["general"].get("initial_monitor", 0))
         except (ValueError, KeyError):
             initial_monitor = 0
+
+        socket_path = "/tmp/mykitty"
+        if os.path.exists(socket_path):
+            os.remove(socket_path)
 
         monitor_list = self.wmctrl.get_monitors()
         if initial_monitor >= len(monitor_list):
