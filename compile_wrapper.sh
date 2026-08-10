@@ -11,6 +11,7 @@ rm -rf "$SCRIPT_DIR/system_dist/kitty-guake"
 #pyinstaller --onedir \
 pyinstaller --onefile \
     --hidden-import='gi' \
+    --collect-all gi \
     --add-data "images_gui:images_gui" \
     --add-data "templates:templates" \
     --add-data "pyproject.toml:." \
