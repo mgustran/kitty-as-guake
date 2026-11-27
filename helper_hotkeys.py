@@ -2,6 +2,8 @@ import time
 import threading
 from typing import Dict, Callable, Set, Tuple, Optional, FrozenSet
 from pynput import keyboard
+from Xlib import X, display as xdisplay
+from Xlib.error import CatchError
 
 class GlobalHotKeys:
 
@@ -19,6 +21,59 @@ class GlobalHotKeys:
         self._lock = threading.Lock()
 
         self.listener: Optional[keyboard.Listener] = None
+        self._xdisp = None
+
+    def _combo_to_x(self, combo: FrozenSet) -> Tuple[int, list]:
+        mod_map = {
+            X.ControlMask: (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r),
+            X.ShiftMask: (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r),
+            X.Mod1Mask: (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r),
+            X.Mod4Mask: (keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r),
+        }
+        mods, keysyms = 0, []
+        for k in combo:
+            mask = next((m for m, ks in mod_map.items() if k in ks), None)
+            if mask:
+                mods |= mask
+            elif isinstance(k, keyboard.KeyCode) and k.char:
+                c = ord(k.char)
+                keysyms.append(c if c < 0x100 else 0x01000000 | c)  # ñ -> 0xf1
+            elif isinstance(k, keyboard.Key) and k.value.vk:
+                keysyms.append(k.value.vk)
+        return mods, keysyms
+
+    def _grab_combos(self) -> None:
+        """Swallow registered combos at X11 level so they don't reach focused app."""
+        try:
+            self._xdisp = xdisplay.Display()
+        except Exception as e:
+            print(f"XGrabKey disabled: {e}")
+            return
+        root = self._xdisp.screen().root
+        ec = CatchError()
+        for combo in self._active_combos:
+            mods, keysyms = self._combo_to_x(combo)
+            for ks in keysyms:
+                kc = self._xdisp.keysym_to_keycode(ks)
+                if not kc:
+                    continue
+                # also grab with CapsLock / NumLock active
+                for extra in (0, X.LockMask, X.Mod2Mask, X.LockMask | X.Mod2Mask):
+                    root.grab_key(kc, mods | extra, True, X.GrabModeAsync, X.GrabModeAsync, onerror=ec)
+        self._xdisp.sync()
+        if ec.get_error():
+            print(f"Some hotkeys already grabbed by another app: {ec.get_error()}")
+
+        disp = self._xdisp
+
+        def drain():
+            try:
+                while True:
+                    disp.next_event()
+            except Exception:
+                pass
+
+        threading.Thread(target=drain, daemon=True).start()
 
     def _parse_hotkey(self, hotkey: str) -> FrozenSet:
         parts = hotkey.lower().replace("<", "").replace(">", "").split("+")
@@ -133,6 +188,7 @@ class GlobalHotKeys:
                 on_release=self.on_release
             )
             self.listener.start()
+            self._grab_combos()
             print(f"Listening for hotkeys: {list(keys.keys())}")
 
     def stop_all(self) -> None:
@@ -146,3 +202,9 @@ class GlobalHotKeys:
         if self.listener:
             self.listener.stop()
             self.listener = None
+        if self._xdisp:
+            try:
+                self._xdisp.close()
+            except Exception:
+                pass
+            self._xdisp = None
