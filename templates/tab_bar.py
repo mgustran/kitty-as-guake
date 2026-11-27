@@ -4,6 +4,7 @@ import getpass
 import math
 import socket
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -46,6 +47,10 @@ ACCENTED_BG_COLOR = Color(30, 104, 199)
 ACCENTED_ICON_BG_COLOR = Color(53, 132, 228)
 
 MAX_BRANCH_LEN = 21
+
+# MODIFICATION: cache git info to avoid spawning git on every redraw (resize lag)
+GIT_CACHE_TTL = 2.0
+_git_cache: Dict[str, tuple] = {}
 
 MIN_TAB_LEN = (
     len(LEFT_SEP)
@@ -239,6 +244,11 @@ def _get_git_info(active_window: Window, is_ssh: bool) -> Dict[str, Any]:
         return {"is_git_repo": False, "branch": ""}
 
     cwd = active_window.cwd_of_child
+    now = time.monotonic()
+    cached = _git_cache.get(cwd)
+    if cached and now - cached[0] < GIT_CACHE_TTL:
+        return cached[1]
+
     proc = subprocess.run(
         ["git", "branch", "--show-current"], capture_output=True, cwd=cwd
     )
@@ -246,16 +256,19 @@ def _get_git_info(active_window: Window, is_ssh: bool) -> Dict[str, Any]:
     # If the command fails we're probably not in a Git repo (note that often the command
     # does not error out, so checking the stderr protects against false negatives)
     if proc.returncode != 0 or len(proc.stderr) > 0:
-        return {"is_git_repo": False, "branch": ""}
+        result = {"is_git_repo": False, "branch": ""}
+        _git_cache[cwd] = (now, result)
+        return result
 
     branch = str(proc.stdout, "utf-8").strip() or "DETACHED"
     if len(branch) > MAX_BRANCH_LEN:
         start_len = (MAX_BRANCH_LEN - 1) // 2
         end_len = MAX_BRANCH_LEN - start_len - 1
         branch = branch[:start_len] + ELLIPSIS + branch[-end_len:]
-        print(start_len, end_len, len(branch))
 
-    return {"is_git_repo": True, "branch": branch}
+    result = {"is_git_repo": True, "branch": branch}
+    _git_cache[cwd] = (now, result)
+    return result
 
 
 def draw_tab(

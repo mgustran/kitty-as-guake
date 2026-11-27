@@ -1,4 +1,6 @@
+import json
 import os
+import socket
 import subprocess
 import time
 from typing import Optional, List
@@ -72,29 +74,34 @@ class KittyManager:
         print(f"{time.time() - start:.2f} seconds to detect kitty window")
         self.wmctrl.set_window_initial_config(self.wm_id, x, y, width)
 
-    def _kitty_redraw(self) -> None:
-        subprocess.run(
-            ["kitty", "@", "--to", "unix:/tmp/mykitty", "resize-os-window", "--action=resize", "--width=0", "--height=0"],
-            capture_output=True
-        )
-        # subprocess.run(
-        #     ["kitty", "@", "--to", "unix:/tmp/mykitty", "set-background-opacity", "--all", "default"],
-        #     capture_output=True
-        # )
+    def _kitty_rc(self, cmd: str, payload: dict) -> None:
+        # Direct remote control via socket (no process spawn)
+        msg = {"cmd": cmd, "version": [0, 30, 0], "no_response": True, "payload": payload}
+        data = b"\x1bP@kitty-cmd" + json.dumps(msg).encode() + b"\x1b\\"
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                s.connect("/tmp/mykitty")
+                s.sendall(data)
+        except OSError as e:
+            print(f"Kitty RC error: {e}")
+
+    def _kitty_resize_rows(self, rows: int) -> None:
+        self._kitty_rc("resize-os-window", {
+            "action": "resize",
+            "unit": "cells",
+            "incremental": True,
+            "width": 0,
+            "height": rows,
+        })
 
     def on_activate_resize_up(self) -> None:
         if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
-            geom = self.wmctrl.get_window_geometry(self.wm_id)
-            if geom:
-                self.wmctrl.resize_window(self.wm_id, -1, -1, -1, geom[4] - 18)
-                self._kitty_redraw()
+            self._kitty_resize_rows(-1)
 
     def on_activate_resize_down(self) -> None:
         if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
-            geom = self.wmctrl.get_window_geometry(self.wm_id)
-            if geom:
-                self.wmctrl.resize_window(self.wm_id, -1, -1, -1, geom[4] + 18)
-                self._kitty_redraw()
+            self._kitty_resize_rows(1)
 
     def on_activate_move_left(self) -> None:
         if self.wm_id and self.wmctrl.is_window_focused(self.wm_id):
