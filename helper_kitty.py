@@ -133,7 +133,7 @@ class KittyManager:
 
     def run(self) -> None:
         hotkeys_cfg = self.kg_config.config.get("hotkeys", {})
-        
+
         def get_hk(name):
             return hotkeys_cfg.get(name, "").replace("\"", "")
 
@@ -147,4 +147,5 @@ class KittyManager:
 
         # Filter out empty hotkeys
         keys = {k: v for k, v in keys.items() if k}
-        self.hotkeys.start(keys)
+        # Only toggle is grabbed; others are passive and check focus in callback
+        self.hotkeys.start(keys, grab=[get_hk("hotkey_visibility_toggle")])

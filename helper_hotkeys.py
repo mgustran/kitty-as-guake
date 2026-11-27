@@ -22,6 +22,7 @@ class GlobalHotKeys:
 
         self.listener: Optional[keyboard.Listener] = None
         self._xdisp = None
+        self._grabbed: Set[FrozenSet] = set()
 
     def _combo_to_x(self, combo: FrozenSet) -> Tuple[int, list]:
         mod_map = {
@@ -42,8 +43,19 @@ class GlobalHotKeys:
                 keysyms.append(k.value.vk)
         return mods, keysyms
 
+    def _close_xdisp(self) -> None:
+        if self._xdisp:
+            try:
+                self._xdisp.close()
+            except Exception:
+                pass
+            self._xdisp = None
+
     def _grab_combos(self) -> None:
-        """Swallow registered combos at X11 level so they don't reach focused app."""
+        """Swallow only combos in self._grabbed at X11 level so they don't reach focused app."""
+        self._close_xdisp()
+        if not self._grabbed:
+            return
         try:
             self._xdisp = xdisplay.Display()
         except Exception as e:
@@ -51,7 +63,7 @@ class GlobalHotKeys:
             return
         root = self._xdisp.screen().root
         ec = CatchError()
-        for combo in self._active_combos:
+        for combo in self._grabbed:
             mods, keysyms = self._combo_to_x(combo)
             for ks in keysyms:
                 kc = self._xdisp.keysym_to_keycode(ks)
@@ -114,23 +126,6 @@ class GlobalHotKeys:
                     if combo not in self._threads or not self._threads[combo][0].is_alive():
                         self._start_repeat_thread(combo, callback)
 
-            # # Buscar combos que coincidan
-            # matching_combos = [
-            #     combo for combo in self._active_combos
-            #     if combo.issubset(self._pressed_keys)
-            # ]
-            #
-            # if not matching_combos:
-            #     return
-            #
-            # # Elegir el combo más específico (más teclas)
-            # best_combo = max(matching_combos, key=len)
-            # callback = self._active_combos[best_combo]
-            #
-            # # Solo iniciar si no existe o murió
-            # if best_combo not in self._threads or not self._threads[best_combo][0].is_alive():
-            #     self._start_repeat_thread(best_combo, callback)
-
     def on_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         with self._lock:
             self._pressed_keys.discard(key)
@@ -155,7 +150,7 @@ class GlobalHotKeys:
                             callback()
                 except Exception as e:
                     print(f"Error in hotkey callback {combo}: {e}")
-                
+
                 time.sleep(self.repeat_interval)
 
         t = threading.Thread(target=runner, daemon=True)
@@ -167,29 +162,37 @@ class GlobalHotKeys:
             _, stop_event = self._threads.pop(combo)
             stop_event.set()
 
-    def start(self, keys: Dict[str, Callable]) -> None:
+    def start(self, keys: Dict[str, Callable], grab: Optional[list] = None) -> None:
         """
         Start the global hotkey listener.
         :param keys: Dictionary mapping hotkey strings to callback functions.
+        :param grab: Hotkey strings to swallow at X11 level (not delivered to focused app).
+                     Others are passive: app still receives them.
         """
         self.stop_all()
-        
+        grab_set = set(grab or [])
+
         with self._lock:
             self._active_combos.clear()
+            self._grabbed.clear()
             for hotkey, callback in keys.items():
                 try:
                     combo = self._parse_hotkey(hotkey)
                     self._active_combos[combo] = callback
+                    if hotkey in grab_set:
+                        self._grabbed.add(combo)
                 except ValueError as e:
                     print(f"Skipping invalid hotkey '{hotkey}': {e}")
 
+            if self.listener:
+                self.listener.stop()
             self.listener = keyboard.Listener(
                 on_press=self.on_press,
                 on_release=self.on_release
             )
             self.listener.start()
             self._grab_combos()
-            print(f"Listening for hotkeys: {list(keys.keys())}")
+            print(f"Listening for hotkeys: {list(keys.keys())} (grabbed: {[h for h in keys if h in grab_set]})")
 
     def stop_all(self) -> None:
         with self._lock:
@@ -202,9 +205,4 @@ class GlobalHotKeys:
         if self.listener:
             self.listener.stop()
             self.listener = None
-        if self._xdisp:
-            try:
-                self._xdisp.close()
-            except Exception:
-                pass
-            self._xdisp = None
+        self._close_xdisp()
